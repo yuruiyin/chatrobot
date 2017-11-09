@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">机器人助手</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="user_guidance">使用指南</string>
+    <string name="text_begin">请开始说话…</string>
+    <string name="app_id">57051369</string>
+    <string name="speechHint">温馨提示：语音技术由科大讯飞提供</string>
+
+</resources>

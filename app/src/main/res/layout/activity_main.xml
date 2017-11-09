@@ -1,0 +1,99 @@
+<com.fzu.chatrobot.custom.ResizeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/id_ly_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true" >
+        <com.fzu.chatrobot.custom.Topbar
+            android:id="@+id/id_topbar"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            custom:leftBackground="@drawable/topbar_back_bg"
+            custom:rightBackground="@drawable/topbar_menu_bg"
+            custom:title="@string/app_name"
+            custom:titleTextColor="#ffffff"
+            custom:titleTextSize="15sp" >
+    </com.fzu.chatrobot.custom.Topbar>
+    </LinearLayout>
+
+    <!--
+    <RelativeLayout
+        android:id="@+id/id_ly_top"
+        android:layout_width="match_parent"
+        android:layout_height="45dp"
+        android:layout_alignParentTop="true"
+        android:background="#303030" >
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="@string/app_name"
+            android:textColor="#ffffff"
+            android:textSize="19sp" />
+    </RelativeLayout>
+    -->
+
+    <RelativeLayout
+        android:id="@+id/id_ly_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:layout_alignParentBottom="true"
+        android:background="#707070">
+
+        <Button
+            android:id="@+id/id_send_msg"
+            android:layout_width="50dp"
+            android:layout_height="35dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="10dp"
+            android:background="@drawable/send_btn_no_input"
+            android:text="发送"
+            android:textColor="#fff"
+            android:textSize="16sp"/>
+
+        <ImageButton
+            android:id="@+id/id_speak"
+            android:layout_width="25dp"
+            android:layout_height="35dp"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="10dp"
+            android:background="@drawable/speak"
+            />
+
+        <EditText
+            android:id="@+id/id_input_msg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp"
+            android:layout_toLeftOf="@id/id_send_msg"
+            android:layout_toRightOf="@id/id_speak"
+            android:background="@drawable/edit_normal"
+            android:maxLines="2"
+            android:maxLength="100"
+            android:textSize="16sp"/>
+    </RelativeLayout>
+
+    <com.fzu.chatrobot.custom.MyListView
+        android:id="@+id/id_listview_msgs"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/id_ly_bottom"
+        android:layout_below="@id/id_ly_topbar"
+        android:layout_marginBottom="0dp"
+        android:layout_marginTop="0dp"
+        android:divider="@null"
+        android:dividerHeight="5dp">
+    </com.fzu.chatrobot.custom.MyListView>
+
+</com.fzu.chatrobot.custom.ResizeLayout>

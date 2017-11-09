@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/id_to_msg_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="#d7d7d7"
+        android:layout_marginTop="3dp"
+        android:text="2012-12-12 12:12:12"
+        android:textColor="#f8f8f8"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="right"
+        android:layout_marginTop="5dp"
+        android:orientation="horizontal" >
+        
+        <TextView
+            android:id="@+id/id_to_msg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="220dp"
+            android:background="@drawable/message_right"
+            android:gravity="center_vertical"
+            android:textSize="16sp"
+            android:textIsSelectable="true"
+            android:layout_marginBottom="3dp"
+            android:text="你好" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="10dp"
+            android:orientation="vertical" >
+
+            <ImageView
+                android:id="@+id/id_to_pic"
+                android:layout_width="43dp"
+                android:layout_height="43dp"
+                android:src="@drawable/boy_icon" />
+
+            <TextView
+                android:id="@+id/id_to_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="me"
+                android:textSize="17sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+    
+</LinearLayout>
