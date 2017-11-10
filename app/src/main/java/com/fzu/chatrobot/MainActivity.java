@@ -1,20 +1,32 @@
 package com.fzu.chatrobot;
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.TreeSet;
-
-import org.json.JSONException;
-import org.json.JSONObject;
+import android.Manifest;
+import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Process;
+import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.Window;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
 
 import com.fzu.chatrobot.adapter.AppInfoAdapter;
 import com.fzu.chatrobot.adapter.ChatMessageAdapter;
@@ -32,6 +44,7 @@ import com.fzu.chatrobot.utils.DialogUtil;
 import com.fzu.chatrobot.utils.HideSoftKeyboard;
 import com.fzu.chatrobot.utils.JsonParser;
 import com.fzu.chatrobot.utils.LogUtil;
+import com.fzu.chatrobot.utils.MyToast;
 import com.fzu.chatrobot.utils.StringUtil;
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
@@ -44,45 +57,47 @@ import com.turing.androidsdk.SDKInit;
 import com.turing.androidsdk.SDKInitBuilder;
 import com.turing.androidsdk.TuringApiManager;
 
-import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.database.Cursor;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.os.Process;
-import android.provider.ContactsContract;
-import android.text.Editable;
-import android.text.TextUtils;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.Window;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import turing.os.http.core.ErrorMessage;
 import turing.os.http.core.HttpConnectionListener;
 import turing.os.http.core.RequestResult;
 
 public class MainActivity extends BaseActivity implements OnClickListener {
+
+    @BindView(R.id.id_listview_msgs)
+    MyListView mMsgs;
+    @BindView(R.id.id_input_msg)
+    EditText mInputMsg;
+    @BindView(R.id.id_send_msg)
+    Button mSendMsg;
+    @BindView(R.id.id_speak)
+    ImageButton mSpeak;
+    @BindView(R.id.id_topbar)
+    Topbar mTopbar;
+
 	private static final String TAG = MainActivity.class.getSimpleName();
 
-	private static MyListView mMsgs;
 	private static ChatMessageAdapter mAdapter;
 	private static List<ChatMessage> mDatas;
 
-	private EditText mInputMsg;
-	private Button mSendMsg;
-	private ImageButton mSpeak;
 	private long exitTime = 0;
-	private Topbar mTopbar;
 	private Context mContext;
 
 	private NetworkReceiver networkReceiver;
@@ -97,25 +112,81 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	// Handler必须设为static，防止内存泄漏，即若有消息在消息队列中，那么handler就无法被回收
 	// 这样会导致使用该Handler的Activity或Service无法被回收，即便是它们的onDestroy方法被调用。
 	private MyHandler mHandler;
+
+	private static final int REQUEST_PERMISSION_CODE = 1;
+
+	private String[] permissionArray = new String[] {
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.CALL_PHONE
+    };
+
+    private List<String> needRequestPermissions;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
 
 		LogUtil.d(TAG, "this process id is " + Process.myPid());
 
-		mContext = this;
-		mHandler = new MyHandler(MainActivity.this);
+        mContext = this;
+        mHandler = new MyHandler(MainActivity.this);
+        initDatas();  //初始化listview数据
+        registerEvents(); //初始化各个View的事件
 
-		initViews();  //初始化布局
-		initDatas();  //初始化listview数据
-		initEvents(); //初始化各个View的事件
-		initTuringAndSpeechSdk();  //初始化Turing SDK
-		regReceiver();
+        //批量申请权限
+        beginRequestPermissions();
 	}
 
-	/**
+    /**
+     * 批量申请权限
+     */
+	private void beginRequestPermissions() {
+        needRequestPermissions = new ArrayList<>();
+        for (String permission : permissionArray) {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, permission)
+                    != PackageManager.PERMISSION_GRANTED) {
+                //该权限未申请
+                needRequestPermissions.add(permission);
+            }
+        }
+
+        if (needRequestPermissions.isEmpty()) {
+            initTuringAndSpeechSdk();  //初始化Turing SDK
+            regReceiver();
+            return;
+        }
+        //批量申请权限
+        ActivityCompat.requestPermissions(MainActivity.this,
+                needRequestPermissions.toArray(new String[needRequestPermissions.size()]), REQUEST_PERMISSION_CODE);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_PERMISSION_CODE:
+                int permissionGrantedSize = 0;
+                for (int grantResult : grantResults) {
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        permissionGrantedSize++;
+                    }
+                }
+                if (needRequestPermissions.size() == permissionGrantedSize) {
+                    // 用户允许了所有权限
+                    initTuringAndSpeechSdk();  //初始化Turing SDK
+                    regReceiver();
+                } else {
+                    showTip("亲！您没有允许所有权限，可能会导致有些功能不可用哦！");
+                }
+                break;
+        }
+    }
+
+    /**
 	 * 注册广播
 	 */
 	private void regReceiver() {
@@ -136,7 +207,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	 */
 	private void initTuringAndSpeechSdk() {
 		// 1.初始化--创建语音配置对象
-		SpeechUtility.createUtility(mContext, "appid="+ getString(R.string.app_id));
+		SpeechUtility.createUtility(mContext, "appid=" + getString(R.string.app_id));
 		// 初始化听写Dialog，如果只使用有UI听写功能，无需创建SpeechRecognizer
 		// 使用UI听写功能，请根据sdk文件目录下的notice.txt,放置布局文件和图片资源
 		mIatDialog = new RecognizerDialog(mContext, mInitListener);
@@ -153,18 +224,20 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 		SDKInitBuilder builder = new SDKInitBuilder(this)
 				.setSecret(MyConstants.SECRET).setTuringKey(MyConstants.API_KEY)
 				.setUniqueId(MyApplication.getUniqueDeviceId());
-		SDKInit.init(builder,new com.turing.androidsdk.InitListener() {
-			@Override
-			public void onFail(String error) {
-				LogUtil.d(TAG, error);
-			}
-			@Override
-			public void onComplete() {
-				// 获取userid成功后，才可以请求Turing服务器，需要请求必须在此回调成功，才可正确请求
-				mTuringApiManager = new TuringApiManager(MainActivity.this);
-				mTuringApiManager.setHttpListener(myHttpConnectionListener);
-			}
-		});
+        SDKInit.init(builder, new com.turing.androidsdk.InitListener() {
+            @Override
+            public void onFail(String error) {
+                LogUtil.d(TAG, error);
+            }
+
+            @Override
+            public void onComplete() {
+                // 获取userid成功后，才可以请求Turing服务器，需要请求必须在此回调成功，才可正确请求
+                mTuringApiManager = new TuringApiManager(MainActivity.this);
+                mTuringApiManager.setHttpListener(myHttpConnectionListener);
+            }
+        });
+
 	}
 
 	/**
@@ -200,7 +273,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 			String errMsg;
 			if (!MyApplication.getNetState()) {
 				errMsg = "您的设备网络不通，请检查是否打开网络连接！";
-			} else{
+			} else {
 				errMsg = "服务器繁忙，请稍后再试!";
 			}
 			Message m = Message.obtain();
@@ -230,6 +303,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 		public void onResult(RecognizerResult results, boolean isLast) {
 			printResult(results);
 		}
+
 		//识别错误回调
 		public void onError(SpeechError error) {
 			showTip(error.getPlainDescription(true));
@@ -267,7 +341,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	 * 检查软键盘的状态，若软键盘弹出，则需要更新ListView的最后一个Item的显示
 	 */
 	private void checkSoftKeyboardState() {
-		ResizeLayout mainLayout = (ResizeLayout) findViewById(R.id.root_layout);
+		ResizeLayout mainLayout = findViewById(R.id.root_layout);
 		mainLayout.setOnResizeListener(new OnResizeListener() {
 			@Override
 			public void onResize(int w, int h, int oldw, int oldh) {
@@ -308,7 +382,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 		for (AppInfo appInfo : appInfoList) {
 			//求最长公共子串,采用DP
 			int lcsLength = StringUtil.getLCSLength(msg, appInfo.getAppLabel());
-			if (lcsLength >= 2  || lcsLength == 1 && lcsLength == appInfo.getAppLabel().length()) {
+			if (lcsLength >= 2 || lcsLength == 1 && lcsLength == appInfo.getAppLabel().length()) {
 				appInfo.setMatchDegree(lcsLength * 1.0 / appInfo.getAppLabel().length());
 				resAppInfoList.add(appInfo);
 			}
@@ -360,7 +434,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	 * @param msgContent 消息内容
 	 * @param msgType 消息类型
 	 */
-	private static void handleMsg(String msgContent, int msgType) {
+	private void handleMsg(String msgContent, int msgType) {
 		ChatMessage chatMessage = new ChatMessage();
 		chatMessage.setType(msgType);
 		chatMessage.setMsg(msgContent);
@@ -396,12 +470,16 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	/**
 	 * 封装打电话操作
 	 * @param telphoneNum 电话号码
-     */
+	 */
 	private void telphoneOperator(String telphoneNum) {
 		//把软键盘收回
 		HideSoftKeyboard.hideSoftKeyboard((Activity) mContext);
 		Intent callIntent = new Intent(Intent.ACTION_CALL);
 		callIntent.setData(Uri.parse("tel:" + telphoneNum));
+		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+				!= PackageManager.PERMISSION_GRANTED) {
+			return;
+		}
 		startActivity(callIntent);
 	}
 
@@ -626,6 +704,10 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	 * 处理语音操作
 	 */
 	private void handleSpeak() {
+	    if (mIatDialog == null) {
+	        showTip("您有权限没开，请重启app允许我们需要的权限！");
+	        return;
+        }
 		mInputMsg.setText(null); // 清空显示内容
 		mIatResults.clear(); // 清空hashmap
 		// 显示听写对话框
@@ -651,7 +733,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	/**
 	 * 初始化View的事件
 	 */
-	private void initEvents() {
+	private void registerEvents() {
 		mSendMsg.setOnClickListener(this);   // 注册发送按钮的监听器
 		// 为该Activity中的每个控件注册关闭软键盘的监听器
 		setOnListenerForCloseKeyboard(findViewById(R.id.id_listview_msgs));
@@ -689,22 +771,9 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 		mMsgs.setAdapter(mAdapter);
 	}
 
-	/**
-	 * 初始化View，通过id获取各View对象
-	 */
-	private void initViews() {
-		mMsgs = (MyListView) findViewById(R.id.id_listview_msgs);
-		mInputMsg = (EditText) findViewById(R.id.id_input_msg);
-		mSendMsg = (Button) findViewById(R.id.id_send_msg);
-		mSpeak = (ImageButton) findViewById(R.id.id_speak);
-		mTopbar = (Topbar) findViewById(R.id.id_topbar);
-	}
-
 	@Override
 	protected void afterEditTextChanged(Editable s) {
-		//输入框改变时候，判断输入框的字符个数, 若个数大于0，则修改发送按钮的背景
-		int curInputCount = s.length();
-		if (curInputCount > 0) {
+		if (!TextUtils.isEmpty(s.toString().trim())) {
 			mSendMsg.setBackgroundResource(R.drawable.send_btn_has_input);
 		} else {
 			mSendMsg.setBackgroundResource(R.drawable.send_btn_no_input);
@@ -773,6 +842,9 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 		public void onReceive(Context context, Intent intent) {
 			ConnectivityManager connectivityManager = (ConnectivityManager)
 					context.getSystemService(Context.CONNECTIVITY_SERVICE);
+			if (connectivityManager == null) {
+			    return;
+            }
 			NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
 			if (networkInfo != null && networkInfo.isAvailable()) {
 				MyApplication.setNetState(true);

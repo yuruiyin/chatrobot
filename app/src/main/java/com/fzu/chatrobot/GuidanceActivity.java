@@ -1,11 +1,9 @@
 package com.fzu.chatrobot;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.view.Window;
 import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
 import android.widget.ListView;
 
 import com.fzu.chatrobot.custom.Topbar;
