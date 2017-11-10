@@ -649,7 +649,7 @@ public class MainActivity extends BaseActivity implements OnClickListener {
 	 * 发送消息
 	 */
 	private void handleSendMsg() {
-		String toMsg = mInputMsg.getText().toString(); //获取输入框的内容
+		String toMsg = mInputMsg.getText().toString().trim(); //获取输入框的内容
 		if (TextUtils.isEmpty(toMsg)) {
 			return;
 		}
